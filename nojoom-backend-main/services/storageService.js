@@ -157,12 +157,15 @@ class SupabaseStorageProvider extends StorageProvider {
         .from(this.bucket)
         .getPublicUrl(key);
 
+      const finalUrl = publicUrlData?.publicUrl || this.getPublicUrl(key);
+      console.log(`✅ File stored successfully in Supabase Storage [${this.bucket}]: ${finalUrl}`);
+
       return {
         provider: 'supabase',
         key,
         filename: file.filename,
         path: file.path,
-        url: publicUrlData?.publicUrl || this.getPublicUrl(key),
+        url: finalUrl,
       };
     } catch (saveErr) {
       console.warn(`⚠️ Supabase Storage save error: ${saveErr.message}, falling back to local file`);

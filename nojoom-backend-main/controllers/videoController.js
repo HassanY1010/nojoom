@@ -10,6 +10,7 @@ import { auditService } from '../services/auditService.js';
 import logger from '../utils/logger.js';
 import VideoRepository from '../repositories/VideoRepository.js';
 import VideoService from '../services/VideoService.js';
+import UserRepository from '../repositories/UserRepository.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -264,7 +265,7 @@ export const videoController = {
       }
 
       const tenantId = req.tenantId || req.tenant?.id || 1;
-      const userCountry = await UserRepository.getUserCountry(req.user.id) || 'Global';
+      const userCountry = (await UserRepository.getUserCountry(req.user.id).catch(() => 'Global')) || 'Global';
 
       const video = await VideoService.uploadVideo(
         { userId: req.user.id, tenantId, userCountry },
