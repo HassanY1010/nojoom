@@ -3,15 +3,26 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// التحقق من وجود API Key
-if (!process.env.RESEND_API_KEY) {
-  console.error("❌ RESEND_API_KEY is missing in .env file");
+// التحقق من وجود API Key وتهيئة Resend بأمان
+let resend = null;
+if (process.env.RESEND_API_KEY) {
+  try {
+    resend = new Resend(process.env.RESEND_API_KEY);
+    console.log("📧 Resend Email client initialized successfully");
+  } catch (err) {
+    console.warn("⚠️ Failed to initialize Resend client:", err.message);
+  }
+} else {
+  console.warn("⚠️ RESEND_API_KEY is missing in environment variables. Email service will run in fallback simulation mode.");
 }
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // دالة لإرسال أي رسالة
 export const sendEmail = async (to, subject, htmlContent) => {
+  if (!resend) {
+    console.warn(`⚠️ [Email Simulator] RESEND_API_KEY not set. Simulated email to <${to}> with subject "${subject}"`);
+    return { id: 'simulated_' + Date.now(), simulated: true };
+  }
+
   try {
     const response = await resend.emails.send({
       from: process.env.SENDER_EMAIL || 'onboarding@resend.dev',
