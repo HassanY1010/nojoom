@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { createClient } from '@supabase/supabase-js';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
@@ -19,7 +20,7 @@ class LocalStorageProvider extends StorageProvider {
   constructor() {
     super();
     if (isProduction && process.env.ALLOW_LOCAL_STORAGE !== 'true') {
-      throw new Error('Local upload storage is not allowed in production. Configure STORAGE_PROVIDER=s3.');
+      throw new Error('Local upload storage is not allowed in production. Configure STORAGE_PROVIDER=s3 or STORAGE_PROVIDER=supabase.');
     }
   }
 
@@ -92,7 +93,62 @@ class S3StorageProvider extends StorageProvider {
   }
 }
 
+class SupabaseStorageProvider extends StorageProvider {
+  constructor() {
+    super();
+
+    const url = process.env.SUPABASE_URL || (process.env.SUPABASE_PROJECT_ID ? `https://${process.env.SUPABASE_PROJECT_ID}.supabase.co` : '');
+    const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+
+    if (!url || !key) {
+      throw new Error('Missing Supabase storage configuration: SUPABASE_URL and SUPABASE_SECRET_KEY are required.');
+    }
+
+    this.bucket = process.env.SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_BUCKET || 'nojoom-media';
+    this.client = createClient(url, key);
+    this.publicBaseUrl = process.env.SUPABASE_PUBLIC_URL || `${url.replace(/\/$/, '')}/storage/v1/object/public/${this.bucket}`;
+  }
+
+  async save(file, folder) {
+    const key = `${folder}/${file.filename}`;
+    const fileBuffer = fs.readFileSync(file.path);
+
+    const { data, error } = await this.client.storage
+      .from(this.bucket)
+      .upload(key, fileBuffer, {
+        contentType: file.mimetype || 'application/octet-stream',
+        upsert: true,
+      });
+
+    if (error) {
+      throw new Error(`Supabase Storage upload error: ${error.message}`);
+    }
+
+    const { data: publicUrlData } = this.client.storage
+      .from(this.bucket)
+      .getPublicUrl(key);
+
+    return {
+      provider: 'supabase',
+      key,
+      filename: file.filename,
+      path: file.path,
+      url: publicUrlData?.publicUrl || this.getPublicUrl(key),
+    };
+  }
+
+  getPublicUrl(key) {
+    if (this.publicBaseUrl) {
+      return `${this.publicBaseUrl.replace(/\/$/, '')}/${key}`;
+    }
+    return `https://${this.bucket}.supabase.co/storage/v1/object/public/${this.bucket}/${key}`;
+  }
+}
+
 const createStorageProvider = () => {
+  if (provider === 'supabase') {
+    return new SupabaseStorageProvider();
+  }
   if (provider === 's3') {
     return new S3StorageProvider();
   }
@@ -102,6 +158,6 @@ const createStorageProvider = () => {
 export const storageService = createStorageProvider();
 export const getStorageStatus = () => ({
   provider,
-  productionSafe: provider === 's3' || process.env.ALLOW_LOCAL_STORAGE === 'true' || !isProduction,
+  productionSafe: ['s3', 'supabase'].includes(provider) || process.env.ALLOW_LOCAL_STORAGE === 'true' || !isProduction,
 });
 export default storageService;

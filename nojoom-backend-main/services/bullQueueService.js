@@ -130,7 +130,7 @@ export const initBullMQ = async () => {
                     thumbnailTimestamp || '00:00:01'
                 );
 
-                if ((process.env.STORAGE_PROVIDER || '').toLowerCase() === 's3') {
+                if (['s3', 'supabase'].includes((process.env.STORAGE_PROVIDER || '').toLowerCase())) {
                     const localThumbPath = path.join(thumbnailsDir, thumbFilename);
                     if (fs.existsSync(localThumbPath)) {
                         const { storageService } = await import('./storageService.js');

@@ -82,13 +82,19 @@ JWT_REFRESH_SECRET=super_secret_refresh_jwt_key_at_least_32_characters_long_6789
 CLIENT_URL=https://nojoom-frontend.up.railway.app
 
 # إعدادات التخزين السحابي Supabase Storage
-STORAGE_PROVIDER=s3
+STORAGE_PROVIDER=supabase
+SUPABASE_PROJECT_ID=yootsrzrcjhzwdygwidp
+SUPABASE_URL=https://yootsrzrcjhzwdygwidp.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_q8V-PGOSXkXaZkVbiEsZJA_x0ilbkcA
+SUPABASE_SECRET_KEY=<YOUR_SUPABASE_SECRET_KEY>
+SUPABASE_STORAGE_BUCKET=nojoom-media
+SUPABASE_PUBLIC_URL=https://yootsrzrcjhzwdygwidp.supabase.co/storage/v1/object/public/nojoom-media
+
+# S3 Compatibility (بديل S3 لـ Supabase)
 S3_BUCKET=nojoom-media
-S3_REGION=us-east-1
-S3_ENDPOINT=https://<PROJECT-REF>.supabase.co/storage/v1/s3
-S3_ACCESS_KEY_ID=<YOUR_SUPABASE_ACCESS_KEY_ID>
-S3_SECRET_ACCESS_KEY=<YOUR_SUPABASE_SECRET_ACCESS_KEY>
-S3_PUBLIC_BASE_URL=https://<PROJECT-REF>.supabase.co/storage/v1/object/public/nojoom-media
+S3_REGION=ap-northeast-1
+S3_ENDPOINT=https://yootsrzrcjhzwdygwidp.supabase.co/storage/v1/s3
+S3_PUBLIC_BASE_URL=https://yootsrzrcjhzwdygwidp.supabase.co/storage/v1/object/public/nojoom-media
 S3_FORCE_PATH_STYLE=true
 ```
 
@@ -108,6 +114,10 @@ S3_FORCE_PATH_STYLE=true
 ```env
 VITE_API_URL=https://<BACKEND-DOMAIN>.up.railway.app/api
 VITE_SOCKET_URL=https://<BACKEND-DOMAIN>.up.railway.app
+VITE_SUPABASE_PROJECT_ID=yootsrzrcjhzwdygwidp
+VITE_SUPABASE_URL=https://yootsrzrcjhzwdygwidp.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_q8V-PGOSXkXaZkVbiEsZJA_x0ilbkcA
+VITE_SUPABASE_STORAGE_BUCKET=nojoom-media
 ```
 
 ---

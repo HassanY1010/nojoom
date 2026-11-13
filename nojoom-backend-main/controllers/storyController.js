@@ -10,7 +10,7 @@ export const storyController = {
 
             const user_id = req.user.id;
             let media_url = `/uploads/stories/${req.file.filename}`;
-            if ((process.env.STORAGE_PROVIDER || '').toLowerCase() === 's3') {
+            if (['s3', 'supabase'].includes((process.env.STORAGE_PROVIDER || '').toLowerCase())) {
                 const stored = await storageService.save(req.file, 'stories');
                 media_url = stored.url;
             }

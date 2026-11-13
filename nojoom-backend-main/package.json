@@ -22,6 +22,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1049.0",
     "@socket.io/redis-adapter": "^8.3.0",
+    "@supabase/supabase-js": "^2.109.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.76.8",

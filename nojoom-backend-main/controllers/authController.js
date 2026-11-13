@@ -199,7 +199,7 @@ export const authController = {
       // ✅ Handle avatar upload
       let avatarPath = '/default-avatar.png';
       if (avatarFile) {
-        if ((process.env.STORAGE_PROVIDER || '').toLowerCase() === 's3') {
+        if (['s3', 'supabase'].includes((process.env.STORAGE_PROVIDER || '').toLowerCase())) {
           const stored = await storageService.save(avatarFile, 'avatars');
           avatarPath = stored.url;
           console.log('✅ Avatar saved to S3/Supabase:', avatarPath);
