@@ -1,0 +1,111 @@
+.winner-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--badge-color, #ffd700);
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    animation: badgePulse 2s ease-in-out infinite;
+}
+
+.winner-badge-small {
+    width: 24px;
+    height: 24px;
+    padding: 4px;
+}
+
+.winner-badge-small .badge-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.winner-badge-medium {
+    width: 36px;
+    height: 36px;
+    padding: 6px;
+}
+
+.winner-badge-medium .badge-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.winner-badge-large {
+    width: 48px;
+    height: 48px;
+    padding: 8px;
+}
+
+.winner-badge-large .badge-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.badge-icon {
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    z-index: 2;
+}
+
+.badge-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, var(--badge-color, #ffd700) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0.6;
+    animation: glowPulse 2s ease-in-out infinite;
+    z-index: 1;
+}
+
+.badge-label {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    backdrop-filter: blur(4px);
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+    }
+}
+
+@keyframes glowPulse {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: translate(-50%, -50%) scale(1);
+    }
+
+    50% {
+        opacity: 0.8;
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+}
+
+/* Badge with label */
+.winner-badge:has(.badge-label) {
+    border-radius: 20px;
+    padding: 6px 12px;
+    width: auto;
+    height: auto;
+}

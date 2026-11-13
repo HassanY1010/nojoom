@@ -1,0 +1,63 @@
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: nojoom
+      MYSQL_USER: nojoom
+      MYSQL_PASSWORD: nojoom_dev_password
+      MYSQL_ROOT_PASSWORD: root_dev_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./nojoom-backend-main
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: nojoom
+      DB_PASSWORD: nojoom_dev_password
+      DB_NAME: nojoom
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CLIENT_URL: http://localhost:8080
+      JWT_SECRET: change-me-32-byte-minimum-secret
+      JWT_REFRESH_SECRET: change-me-refresh-32-byte-minimum-secret
+      SEED_TEST_ACCOUNTS: "false"
+    ports:
+      - "3333:3333"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./nojoom-frontend-main
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

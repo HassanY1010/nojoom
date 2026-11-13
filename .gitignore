@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+
+# Environment files and secrets
+.env
+*.env
+.env.*
+!.env.example
+*.pem
+ca.pem
+test_accounts.json
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+**/dist/
+**/build/
+
+# Uploaded Media and Segments
+uploads/
+*/uploads/
+**/uploads/
+thumbnails/
+*/thumbnails/
+**/thumbnails/
+segment_*.ts
+*/segment_*.ts
+**/segment_*.ts
+
+# Temporary & Cache
+temp/
+*/temp/
+**/temp/
+.minimax/
+.cache/
+*.tsbuildinfo
+bundle-analysis.html
+tsc_output*.txt
+
+# Logs
+logs/
+*/logs/
+**/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Database files
+*.sqlite
+*.sqlite3
+nojoom.db
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

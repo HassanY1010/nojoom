@@ -1,0 +1,190 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nojoom
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nojoom-secrets
+  namespace: nojoom
+type: Opaque
+stringData:
+  JWT_SECRET: replace-me
+  JWT_REFRESH_SECRET: replace-me
+  CSRF_SECRET: replace-me
+  DB_PASSWORD: replace-me
+  S3_ACCESS_KEY_ID: replace-me
+  S3_SECRET_ACCESS_KEY: replace-me
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nojoom-config
+  namespace: nojoom
+data:
+  NODE_ENV: production
+  STORAGE_PROVIDER: s3
+  SOCKET_REDIS_ADAPTER: "true"
+  REDIS_HOST: nojoom-redis
+  REDIS_PORT: "6379"
+  S3_REGION: me-south-1
+  S3_BUCKET: nojoom-media
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nojoom-backend
+  namespace: nojoom
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nojoom-backend
+  template:
+    metadata:
+      labels:
+        app: nojoom-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/your-org/nojoom-backend:latest
+          ports:
+            - containerPort: 3333
+          envFrom:
+            - configMapRef:
+                name: nojoom-config
+            - secretRef:
+                name: nojoom-secrets
+          readinessProbe:
+            httpGet:
+              path: /api/ready
+              port: 3333
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3333
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nojoom-backend
+  namespace: nojoom
+spec:
+  selector:
+    app: nojoom-backend
+  ports:
+    - port: 80
+      targetPort: 3333
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nojoom-backend
+  namespace: nojoom
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nojoom-backend
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 65
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nojoom-frontend
+  namespace: nojoom
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nojoom-frontend
+  template:
+    metadata:
+      labels:
+        app: nojoom-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/your-org/nojoom-frontend:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nojoom-frontend
+  namespace: nojoom
+spec:
+  selector:
+    app: nojoom-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nojoom-redis
+  namespace: nojoom
+spec:
+  serviceName: nojoom-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nojoom-redis
+  template:
+    metadata:
+      labels:
+        app: nojoom-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nojoom-redis
+  namespace: nojoom
+spec:
+  selector:
+    app: nojoom-redis
+  ports:
+    - port: 6379
+      targetPort: 6379

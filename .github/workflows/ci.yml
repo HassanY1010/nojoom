@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nojoom-backend-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: nojoom-backend-main/package-lock.json
+      - run: npm ci
+      - name: Reject unresolved merge conflicts
+        run: "! grep -R \"^<<<<<<<\\|^=======\\|^>>>>>>>\" --exclude-dir=node_modules --exclude-dir=uploads --exclude-dir=logs --exclude-dir=temp ."
+      - name: Syntax check
+        run: find . -name node_modules -prune -o -name uploads -prune -o -name logs -prune -o -name temp -prune -o \\( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \\) -print0 | xargs -0 -n1 node --check
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: nojoom-frontend-main
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: nojoom-frontend-main/package-lock.json
+      - run: npm ci
+      - name: Reject unresolved merge conflicts
+        run: "! grep -R \"^<<<<<<<\\|^=======\\|^>>>>>>>\" --exclude-dir=node_modules --exclude-dir=dist ."
+      - name: Reject token persistence
+        run: "! grep -R \"localStorage\\.\\(getItem\\|setItem\\|removeItem\\)(['\\\"]\\(accessToken\\|refreshToken\\|token\\)['\\\"]\" --include='*.ts' --include='*.tsx' --include='*.js' --include='*.jsx' --exclude-dir=node_modules --exclude-dir=dist ."
+      - name: Dependency audit
+        run: npm audit --audit-level=moderate
+      - run: npm run build
