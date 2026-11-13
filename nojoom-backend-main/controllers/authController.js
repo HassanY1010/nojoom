@@ -221,19 +221,25 @@ export const authController = {
         birthMonth: birthMonth ? parseInt(birthMonth) : null,
         birthYear: birthYear ? parseInt(birthYear) : null,
         country: country || null,
-        tenantId: req.tenantId
+        tenantId: req.tenantId || req.tenant?.id || 1
       });
+
+      const userResponse = { ...result.user };
+      delete userResponse.password;
 
       res.status(201).json({
         message: 'User registered successfully.',
-        user: result.user,
+        user: userResponse,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken
       });
 
     } catch (error) {
       console.error('❌ Registration error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
     }
   },
 
@@ -293,13 +299,18 @@ export const authController = {
   async login(req, res) {
     try {
       const { email, password } = req.body;
+      const tenantId = req.tenantId || req.tenant?.id || 1;
 
-      const result = await AuthService.loginUser(email, password, req.tenantId);
+      console.log(`🔑 Login attempt: ${email} (tenant: ${tenantId})`);
 
+      const result = await AuthService.loginUser(email, password, tenantId);
+
+      const userResponse = { ...result.user };
+      delete userResponse.password;
 
       res.json({
         message: 'Login successful',
-        user: result.user,
+        user: userResponse,
         accessToken: result.accessToken,
         refreshToken: result.refreshToken
       });
@@ -309,7 +320,10 @@ export const authController = {
       if (error.message === 'Invalid credentials') {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
     }
   },
 

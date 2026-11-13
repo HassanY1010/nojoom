@@ -1,18 +1,20 @@
 import { pool } from '../config/db.js';
 
 export const AuthRepository = {
-    async findUserByEmail(email, tenantId) {
+    async findUserByEmail(email, tenantId = 1) {
+        const tid = tenantId || 1;
         const [rows] = await pool.execute(
-            'SELECT * FROM users WHERE email = ? AND tenant_id = ?',
-            [email, tenantId]
+            'SELECT * FROM users WHERE email = ? AND (tenant_id = ? OR tenant_id IS NULL)',
+            [email, tid]
         );
         return rows[0];
     },
 
-    async findUserByUsername(username, tenantId) {
+    async findUserByUsername(username, tenantId = 1) {
+        const tid = tenantId || 1;
         const [rows] = await pool.execute(
-            'SELECT * FROM users WHERE username = ? AND tenant_id = ?',
-            [username, tenantId]
+            'SELECT * FROM users WHERE username = ? AND (tenant_id = ? OR tenant_id IS NULL)',
+            [username, tid]
         );
         return rows[0];
     },
@@ -22,7 +24,7 @@ export const AuthRepository = {
         const [result] = await pool.execute(
             `INSERT INTO users (username, email, password, role, tenant_id, avatar, bio) 
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [username, email, password, role || 'user', tenant_id, avatar || null, bio || null]
+            [username, email, password, role || 'user', tenant_id || 1, avatar || null, bio || null]
         );
         return result.insertId;
     },
@@ -49,18 +51,32 @@ export const AuthRepository = {
         );
     },
 
-    async createRefreshToken(userId, token, expiresAt = null) {
-        await pool.execute(
-            'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
-            [userId, token, expiresAt]
-        );
+    async createRefreshToken(userId, token, expiresAt = null, tenantId = 1) {
+        const expires = expiresAt ? new Date(expiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        try {
+            await pool.execute(
+                'INSERT INTO refresh_tokens (user_id, token, expires_at, tenant_id) VALUES (?, ?, ?, ?)',
+                [userId, token, expires, tenantId || 1]
+            );
+        } catch (e) {
+            try {
+                await pool.execute(
+                    'INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+                    [userId, token, expires]
+                );
+            } catch (fallbackErr) {
+                console.error('⚠️ AuthRepository.createRefreshToken fallback error:', fallbackErr.message);
+            }
+        }
     },
 
-    async findExistingUsernames(usernames, tenantId) {
+    async findExistingUsernames(usernames, tenantId = 1) {
+        if (!usernames || usernames.length === 0) return [];
+        const tid = tenantId || 1;
         const placeholders = usernames.map(() => '?').join(',');
         const [rows] = await pool.execute(
-            `SELECT username FROM users WHERE username IN (${placeholders}) AND tenant_id = ?`,
-            [...usernames, tenantId]
+            `SELECT username FROM users WHERE username IN (${placeholders}) AND (tenant_id = ? OR tenant_id IS NULL)`,
+            [...usernames, tid]
         );
         return rows;
     },

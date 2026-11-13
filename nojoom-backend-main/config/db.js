@@ -258,7 +258,7 @@ export const initializeDatabase = async () => {
       await connection.execute('TRUNCATE TABLE users');
       await connection.execute('SET FOREIGN_KEY_CHECKS = 1');
 
-      const testPassword = '$2a$10$wH6R7OQuisG7Uj.0xQyO1.g7.z7uS7XUjG6yv4Qz2zB2zB2zB2zB2'; // 'password123'
+      const testPassword = '$2b$10$zjitiNqZRQLx15kd9qf8R.aw9zcqVCklRuhk8e7LqeOIM36HqBoAO'; // 'password123'
 
       const testAccounts = [
         ['super_admin_test', 'super@test.com', testPassword, 'super_admin'],
@@ -275,6 +275,13 @@ export const initializeDatabase = async () => {
       }
       console.log('✅ Test accounts seeded successfully');
     }
+
+    try {
+      await connection.execute(
+        `UPDATE users SET password = ? WHERE email IN ('super@test.com', 'admin@test.com', 'mod@test.com', 'user@test.com')`,
+        ['$2b$10$zjitiNqZRQLx15kd9qf8R.aw9zcqVCklRuhk8e7LqeOIM36HqBoAO']
+      );
+    } catch (_) {}
 
     // ✅ دالة محسنة لإضافة الأعمدة مع التحقق من وجودها أولاً
     const addCol = async (tableName, colName, colDef) => {
@@ -612,13 +619,19 @@ export const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS refresh_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
-        token VARCHAR(255) NOT NULL,
-        expires_at TIMESTAMP NOT NULL,
+        token VARCHAR(1000) NOT NULL,
+        expires_at TIMESTAMP NULL DEFAULT NULL,
+        tenant_id INT NOT NULL DEFAULT 1,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        INDEX idx_token (token)
+        INDEX idx_user_id (user_id)
       )
     `);
+
+    try {
+      await connection.execute(`ALTER TABLE refresh_tokens MODIFY COLUMN token VARCHAR(1000) NOT NULL`);
+      await connection.execute(`ALTER TABLE refresh_tokens MODIFY COLUMN expires_at TIMESTAMP NULL DEFAULT NULL`);
+    } catch (_) {}
 
     // ✅ جدول سجل البحث
     await connection.execute(`

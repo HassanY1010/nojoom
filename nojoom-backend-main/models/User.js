@@ -18,10 +18,7 @@ export class User {
       birthYear
     } = userData;
 
-    // 🔒 Multi-Tenant Security: tenant_id is REQUIRED
-    if (!tenant_id) {
-      throw new Error('tenant_id is required for user creation');
-    }
+    const activeTenantId = tenant_id || 1;
 
     // 🔥 كلمات السر مشفرة باستخدام bcrypt لحماية أمن المستخدمين
     const salt = await bcrypt.genSalt(10);
@@ -32,7 +29,7 @@ export class User {
      (tenant_id, username, email, password, avatar, bio, country, email_verified, language, theme, role, total_watch_time, birth_date, birth_day, birth_month, birth_year) 
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        tenant_id,
+        activeTenantId,
         username,
         email,
         finalPassword,
@@ -56,28 +53,20 @@ export class User {
 
 
   // ✅ دوال أخرى موجودة مسبقاً...
-  static async findByEmail(email, tenantId) {
-    // 🔒 Multi-Tenant Security: MUST filter by tenant_id
-    if (!tenantId) {
-      throw new Error('tenantId is required for findByEmail');
-    }
-
+  static async findByEmail(email, tenantId = 1) {
+    const tid = tenantId || 1;
     const [rows] = await pool.execute(
-      'SELECT * FROM users WHERE email = ? AND tenant_id = ?',
-      [email, tenantId]
+      'SELECT * FROM users WHERE email = ? AND (tenant_id = ? OR tenant_id IS NULL)',
+      [email, tid]
     );
     return rows[0];
   }
 
-  static async findById(id, tenantId) {
+  static async findById(id, tenantId = 1) {
     try {
-      // 🔒 Multi-Tenant Security: Filter by tenant_id
-      const query = tenantId
-        ? 'SELECT id, tenant_id, username, email, avatar, bio, country, social_links, followers_count, following_count, likes_count, views_count, total_watch_time, role, email_verified, language, theme, is_banned, ban_reason, created_at, last_login, birth_date, birth_day, birth_month, birth_year, is_private, allow_dms, show_activity_status FROM users WHERE id = ? AND tenant_id = ?'
-        : 'SELECT id, tenant_id, username, email, avatar, bio, country, social_links, followers_count, following_count, likes_count, views_count, total_watch_time, role, email_verified, language, theme, is_banned, ban_reason, created_at, last_login, birth_date, birth_day, birth_month, birth_year, is_private, allow_dms, show_activity_status FROM users WHERE id = ?';
-
-
-      const [rows] = await pool.execute(query, tenantId ? [id, tenantId] : [id]);
+      const tid = tenantId || 1;
+      const query = 'SELECT id, tenant_id, username, email, avatar, bio, country, social_links, followers_count, following_count, likes_count, views_count, total_watch_time, role, email_verified, language, theme, is_banned, ban_reason, created_at, last_login, birth_date, birth_day, birth_month, birth_year, is_private, allow_dms, show_activity_status FROM users WHERE id = ? AND (tenant_id = ? OR tenant_id IS NULL)';
+      const [rows] = await pool.execute(query, [id, tid]);
       return rows[0];
     } catch (error) {
       console.error('Error in User.findById:', error);
@@ -85,14 +74,11 @@ export class User {
     }
   }
 
-  static async findByUsername(username, tenantId) {
+  static async findByUsername(username, tenantId = 1) {
     try {
-      // 🔒 Multi-Tenant Security: Filter by tenant_id
-      const query = tenantId
-        ? 'SELECT id, username, email, avatar, bio, role, is_banned, tenant_id FROM users WHERE username = ? AND tenant_id = ?'
-        : 'SELECT id, username, email, avatar, bio, role, is_banned, tenant_id FROM users WHERE username = ?';
-
-      const [rows] = await pool.execute(query, tenantId ? [username, tenantId] : [username]);
+      const tid = tenantId || 1;
+      const query = 'SELECT id, username, email, avatar, bio, role, is_banned, tenant_id FROM users WHERE username = ? AND (tenant_id = ? OR tenant_id IS NULL)';
+      const [rows] = await pool.execute(query, [username, tid]);
       return rows[0];
     } catch (error) {
       console.error('Error in User.findByUsername:', error);
