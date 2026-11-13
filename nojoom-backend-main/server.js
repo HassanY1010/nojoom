@@ -98,6 +98,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     const isAllowed = allowedOrigins.indexOf(origin) !== -1 ||
+      origin.includes('unique-alignment-production-4b0d305b.up.railway.app') ||
       origin.includes('nojoom-production.up.railway.app') ||
       origin.endsWith('.railway.app') ||
       origin.endsWith('.up.railway.app') ||

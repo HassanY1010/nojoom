@@ -34,6 +34,7 @@ export const initSocket = async (server) => {
           const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(url => url.trim()).filter(Boolean);
 
           const isAllowed = allowedOrigins.includes(trimmedOrigin) ||
+            trimmedOrigin.includes('unique-alignment-production-4b0d305b.up.railway.app') ||
             trimmedOrigin.includes('nojoom-production.up.railway.app') ||
             trimmedOrigin.endsWith('.railway.app') ||
             trimmedOrigin.endsWith('.up.railway.app') ||

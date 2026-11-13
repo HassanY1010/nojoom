@@ -79,8 +79,7 @@ JWT_SECRET=super_secret_jwt_key_at_least_32_characters_long_12345
 JWT_REFRESH_SECRET=super_secret_refresh_jwt_key_at_least_32_characters_long_67890
 
 # رابط الفرونت إند (مهم جداً للـ CORS و WebSockets)
-# ضعه برابط الفرونت إند الذي ستولده في الخطوة التالية:
-CLIENT_URL=https://nojoom-frontend.up.railway.app
+CLIENT_URL=https://unique-alignment-production-4b0d305b.up.railway.app
 
 # إعدادات التخزين السحابي Supabase Storage
 STORAGE_PROVIDER=supabase
