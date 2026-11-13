@@ -419,6 +419,7 @@ export const initializeDatabase = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT UNIQUE NOT NULL,
         preferred_categories JSON,
+        content_weights JSON,
         excluded_users JSON,
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -426,6 +427,9 @@ export const initializeDatabase = async () => {
         INDEX idx_user_id (user_id)
       )
     `);
+
+    await addCol('user_preferences', 'content_weights', 'JSON');
+    await addCol('user_preferences', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
 
     // ✅ جدول الرسائل الخاصة (Direct Messages)
     await connection.execute(`

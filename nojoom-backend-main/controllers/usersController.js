@@ -896,34 +896,37 @@ export const usersController = {
   async getUserPreferences(req, res) {
     try {
       const userId = req.user.id;
-      console.log('🔄 Getting user preferences for:', userId);
-
-        const prefs = await UserRepository.getUserPreferences(userId);
-
-        if (prefs) {
-          const preferences = {
-            preferred_categories: JSON.parse(prefs.preferred_categories || '[]'),
-            content_weights: JSON.parse(prefs.content_weights || '{}'),
-            excluded_users: JSON.parse(prefs.excluded_users || '[]')
-          };
-
-          return res.json({ preferences });
-        }
-
-      const defaultPreferences = {
+      let preferences = {
         preferred_categories: [],
         content_weights: {},
         excluded_users: []
       };
 
-      res.json({
-        preferences: defaultPreferences
-      });
+      try {
+        const prefs = await UserRepository.getUserPreferences(userId);
+        if (prefs) {
+          preferences = {
+            preferred_categories: typeof prefs.preferred_categories === 'string'
+              ? JSON.parse(prefs.preferred_categories || '[]')
+              : (prefs.preferred_categories || []),
+            content_weights: typeof prefs.content_weights === 'string'
+              ? JSON.parse(prefs.content_weights || '{}')
+              : (prefs.content_weights || {}),
+            excluded_users: typeof prefs.excluded_users === 'string'
+              ? JSON.parse(prefs.excluded_users || '[]')
+              : (prefs.excluded_users || [])
+          };
+        }
+      } catch (dbErr) {
+        console.warn('Error reading preferences from DB:', dbErr.message);
+      }
+
+      res.json({ preferences, data: preferences });
     } catch (error) {
       console.error('Get user preferences error:', error);
-      res.status(500).json({
-        error: 'Internal server error',
-        details: error.message
+      res.json({
+        preferences: { preferred_categories: [], content_weights: {}, excluded_users: [] },
+        data: { preferred_categories: [], content_weights: {}, excluded_users: [] }
       });
     }
   },

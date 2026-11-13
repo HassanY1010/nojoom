@@ -11,6 +11,10 @@ const MAX_LOGIN_ATTEMPTS = 5;
 
 // Middleware محسن للتحقق من التوكن مع تجديد تلقائي
 export const authenticateToken = async (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 

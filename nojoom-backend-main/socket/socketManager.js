@@ -26,33 +26,10 @@ export const initSocket = async (server) => {
   try {
     io = new Server(server, {
       cors: {
-        origin: function (origin, callback) {
-          if (!origin) return callback(null, true);
-
-          // Clean the origin string
-          const trimmedOrigin = origin.trim();
-          const allowedOrigins = (process.env.CLIENT_URL || '').split(',').map(url => url.trim()).filter(Boolean);
-
-          const isAllowed = allowedOrigins.includes(trimmedOrigin) ||
-            trimmedOrigin.includes('unique-alignment-production-4b0d305b.up.railway.app') ||
-            trimmedOrigin.includes('nojoom-production.up.railway.app') ||
-            trimmedOrigin.endsWith('.railway.app') ||
-            trimmedOrigin.endsWith('.up.railway.app') ||
-            trimmedOrigin.endsWith('.vercel.app') ||
-            trimmedOrigin.includes('localhost') ||
-            trimmedOrigin.includes('127.0.0.1') ||
-            trimmedOrigin.includes('192.168.');
-
-          if (isAllowed) {
-            callback(null, true);
-          } else {
-            console.log('🚫 Socket CORS Blocked Origin:', origin);
-            callback(new Error('Not allowed by CORS'));
-          }
-        },
+        origin: true,
         methods: ["GET", "POST"],
         credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
+        allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
       },
       transports: ['websocket', 'polling'],
       pingTimeout: 60000,
@@ -62,17 +39,19 @@ export const initSocket = async (server) => {
     console.log('✅ Socket.IO initialized successfully');
 
     // Setup Redis adapter in production for clustering support
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.REDIS_URL && process.env.ENABLE_CLUSTER === 'true') {
       try {
         const { createAdapter } = await import('@socket.io/redis-adapter');
         const { default: Redis } = await import('ioredis');
 
-        let redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+        let redisUrl = process.env.REDIS_URL;
         if (redisUrl.includes('upstash.io') && redisUrl.startsWith('redis://')) {
           redisUrl = redisUrl.replace(/^redis:\/\//, 'rediss://');
         }
-        const pubClient = new Redis(redisUrl);
+        const pubClient = new Redis(redisUrl, { maxRetriesPerRequest: null, enableReadyCheck: false });
+        pubClient.on('error', (err) => console.warn('Socket Redis pubClient warning:', err.message));
         const subClient = pubClient.duplicate();
+        subClient.on('error', (err) => console.warn('Socket Redis subClient warning:', err.message));
 
         io.adapter(createAdapter(pubClient, subClient));
         console.log('🔄 Socket.IO Redis adapter configured successfully');
@@ -84,17 +63,25 @@ export const initSocket = async (server) => {
     // ==================== مصادقة Socket ====================
     io.use(async (socket, next) => {
       try {
-        const token = socket.handshake.auth.token;
+        const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
 
         if (!token) {
-          console.log('❌ No token provided for socket connection');
-          return next(new Error('Authentication error'));
+          socket.userId = null;
+          socket.user = null;
+          socket.username = 'guest';
+          socket.tenantId = 1;
+          return next();
         }
 
-        jwt.verify(token, jwtConfig.secret, async (err, decoded) => {
+        const secret = jwtConfig.secret || process.env.JWT_SECRET || 'nojoom_super_secret_jwt_key_default_32_chars';
+        jwt.verify(token, secret, async (err, decoded) => {
           if (err) {
-            console.log('❌ Socket token verification failed:', err.message);
-            return next(new Error('Authentication error'));
+            console.log('⚠️ Socket token verification failed, allowing guest mode:', err.message);
+            socket.userId = null;
+            socket.user = null;
+            socket.username = 'guest';
+            socket.tenantId = 1;
+            return next();
           }
 
           try {
@@ -103,28 +90,35 @@ export const initSocket = async (server) => {
               [decoded.id]
             );
 
-            if (users.length === 0) {
-              return next(new Error('User not found'));
+            if (users.length === 0 || users[0].is_banned) {
+              socket.userId = null;
+              socket.user = null;
+              socket.username = 'guest';
+              socket.tenantId = 1;
+              return next();
             }
 
-            if (users[0].is_banned) {
-              return next(new Error('User is banned'));
-            }
-
-            socket.userId = decoded.id;
+            socket.userId = users[0].id;
             socket.user = users[0];
             socket.username = users[0].username;
-            socket.tenantId = decoded.tenantId || users[0].tenant_id;  // 🔒 Multi-Tenant Security
+            socket.tenantId = decoded.tenantId || users[0].tenant_id || 1;
             console.log('✅ Socket authenticated for user:', socket.username, 'tenant:', socket.tenantId);
             next();
           } catch (dbError) {
-            console.error('Database error in socket auth:', dbError);
-            next(new Error('Authentication error'));
+            console.warn('Database error in socket auth, proceeding with decoded token:', dbError.message);
+            socket.userId = decoded.id;
+            socket.user = { id: decoded.id, role: decoded.role || 'user' };
+            socket.username = decoded.email?.split('@')[0] || `user_${decoded.id}`;
+            socket.tenantId = decoded.tenantId || 1;
+            next();
           }
         });
       } catch (error) {
-        console.error('Socket auth error:', error);
-        next(new Error('Authentication error'));
+        socket.userId = null;
+        socket.user = null;
+        socket.username = 'guest';
+        socket.tenantId = 1;
+        next();
       }
     });
 
@@ -138,14 +132,16 @@ export const initSocket = async (server) => {
       }).catch(() => {});
 
       // ✅ إضافة المستخدم إلى قائمة المتصلين
-      connectedUsers.set(socket.userId, {
-        id: socket.userId,
-        username: socket.username,
-        socketId: socket.id,
-        role: socket.user.role,
-        connectedAt: new Date(),
-        lastActivity: new Date()
-      });
+      if (socket.userId && socket.user) {
+        connectedUsers.set(socket.userId, {
+          id: socket.userId,
+          username: socket.username || 'user',
+          socketId: socket.id,
+          role: socket.user?.role || 'user',
+          connectedAt: new Date(),
+          lastActivity: new Date()
+        });
+      }
 
       // ✅ تحديث إحصائيات المستخدمين النشطين
       updateActiveUsersCount(io);

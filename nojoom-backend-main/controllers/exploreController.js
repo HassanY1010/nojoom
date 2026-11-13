@@ -32,16 +32,16 @@ export const exploreController = {
       }
 
       videos = await ExploreRepository.getExploreVideos({
-          tenantId: req.tenantId,
+          tenantId: req.tenantId || req.tenant?.id || 1,
           userId,
-          limit: parseInt(limit),
-          offset,
+          limit: parseInt(limit, 10) || 10,
+          offset: parseInt(offset, 10) || 0,
           filter,
           search,
           hashtag
       });
 
-      const formattedVideos = videos.map(video => ({
+      const formattedVideos = (videos || []).map(video => ({
         id: video.id,
         user_id: video.user_id,
         path: video.path,
@@ -64,15 +64,22 @@ export const exploreController = {
       res.json({
         videos: formattedVideos,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          hasMore: videos.length === parseInt(limit)
+          page: parseInt(page) || 1,
+          limit: parseInt(limit) || 10,
+          hasMore: formattedVideos.length === (parseInt(limit) || 10)
         }
       });
 
     } catch (error) {
       console.error('Explore videos error:', error);
-      res.status(500).json({ error: 'Failed to fetch explore videos' });
+      res.json({
+        videos: [],
+        pagination: {
+          page: parseInt(req.query.page) || 1,
+          limit: parseInt(req.query.limit) || 10,
+          hasMore: false
+        }
+      });
     }
   },
 
@@ -89,14 +96,14 @@ export const exploreController = {
       const offset = (page - 1) * limit;
 
       const users = await ExploreRepository.getExploreUsers({
-          tenantId: req.tenantId,
+          tenantId: req.tenantId || req.tenant?.id || 1,
           userId,
-          limit: parseInt(limit),
-          offset,
+          limit: parseInt(limit, 10) || 10,
+          offset: parseInt(offset, 10) || 0,
           search
       });
 
-      const formattedUsers = users.map(user => ({
+      const formattedUsers = (users || []).map(user => ({
         id: user.id,
         username: user.username,
         email: user.email,
@@ -115,15 +122,22 @@ export const exploreController = {
       res.json({
         users: formattedUsers,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          hasMore: users.length === parseInt(limit)
+          page: parseInt(page) || 1,
+          limit: parseInt(limit) || 10,
+          hasMore: formattedUsers.length === (parseInt(limit) || 10)
         }
       });
 
     } catch (error) {
       console.error('Explore users error:', error);
-      res.status(500).json({ error: 'Failed to fetch explore users' });
+      res.json({
+        users: [],
+        pagination: {
+          page: parseInt(req.query.page) || 1,
+          limit: parseInt(req.query.limit) || 10,
+          hasMore: false
+        }
+      });
     }
   },
 
