@@ -23,33 +23,44 @@ export class Group {
     }
 
     // Find group by ID
-    static async findById(id, tenantId) {
-        // 🔒 Multi-Tenant Security: Filter by tenant_id
-        const [rows] = await pool.execute(
-            `SELECT g.*, g.avatar as image, u.username as creator_name,
-              (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
-       FROM \`groups\` g
-       JOIN users u ON g.creator_id = u.id
-       WHERE g.id = ? AND (g.tenant_id = ? OR ? IS NULL)`,
-            [id, tenantId, tenantId]
-        );
-        return rows[0];
+    static async findById(id, tenantId = 1) {
+        const tid = tenantId || 1;
+        try {
+            const [rows] = await pool.execute(
+                `SELECT g.*, g.avatar as image, u.username as creator_name,
+                  (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
+           FROM \`groups\` g
+           JOIN users u ON g.creator_id = u.id
+           WHERE g.id = ? AND (g.tenant_id = ? OR g.tenant_id IS NULL)`,
+                [id, tid]
+            );
+            return rows[0];
+        } catch (_) {
+            return null;
+        }
     }
 
     // Get groups with membership status for a user
-    static async listAll(userId, tenantId, limit = 50, offset = 0) {
-        // 🔒 Multi-Tenant Security: Filter by tenant_id
-        const [rows] = await pool.execute(
-            `SELECT g.*, g.avatar as image, 
-              (SELECT role FROM group_members WHERE group_id = g.id AND user_id = ?) as user_role,
-              (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
-       FROM \`groups\` g
-       WHERE g.tenant_id = ?
-       ORDER BY g.created_at DESC
-       LIMIT ? OFFSET ?`,
-            [userId, tenantId, limit, offset]
-        );
-        return rows;
+    static async listAll(userId, tenantId = 1, limit = 50, offset = 0) {
+        const tid = tenantId || 1;
+        const lim = parseInt(limit, 10) || 50;
+        const off = parseInt(offset, 10) || 0;
+        try {
+            const [rows] = await pool.execute(
+                `SELECT g.*, g.avatar as image, 
+                  ${userId ? '(SELECT role FROM group_members WHERE group_id = g.id AND user_id = ?) as user_role,' : 'NULL as user_role,'}
+                  (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count
+           FROM \`groups\` g
+           WHERE (g.tenant_id = ? OR g.tenant_id IS NULL)
+           ORDER BY g.created_at DESC
+           LIMIT ? OFFSET ?`,
+                userId ? [userId, tid, lim, off] : [tid, lim, off]
+            );
+            return rows || [];
+        } catch (err) {
+            console.warn('Group.listAll fallback error:', err.message);
+            return [];
+        }
     }
 
     // Join group

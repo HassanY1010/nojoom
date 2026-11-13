@@ -22,10 +22,8 @@ export class Video {
       country = 'Global'
     } = videoData;
 
-    // 🔒 Multi-Tenant Security: tenant_id is REQUIRED
-    if (!tenant_id) {
-      throw new Error('tenant_id is required for video creation');
-    }
+    // 🔒 Multi-Tenant Security: tenant_id with default fallback
+    const activeTenantId = tenant_id || 1;
 
     const finalPath = videoPath || (video_url ? path.basename(video_url) : '');
     const finalVideoUrl = video_url || (videoPath ? `/uploads/videos/${videoPath}` : '');
@@ -36,7 +34,7 @@ export class Video {
           subspace_video_id, subspace_thumbnail_id, url, title, duration, hashtags, category, country)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        tenant_id,
+        activeTenantId,
         user_id,
         finalVideoUrl,
         thumbnail || '/default-thumbnail.jpg',

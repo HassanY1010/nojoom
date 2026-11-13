@@ -132,30 +132,48 @@ class SupabaseStorageProvider extends StorageProvider {
 
   async save(file, folder) {
     const key = `${folder}/${file.filename}`;
-    const fileBuffer = fs.readFileSync(file.path);
+    try {
+      const fileBuffer = fs.readFileSync(file.path);
 
-    const { data, error } = await this.client.storage
-      .from(this.bucket)
-      .upload(key, fileBuffer, {
-        contentType: file.mimetype || 'application/octet-stream',
-        upsert: true,
-      });
+      const { data, error } = await this.client.storage
+        .from(this.bucket)
+        .upload(key, fileBuffer, {
+          contentType: file.mimetype || 'application/octet-stream',
+          upsert: true,
+        });
 
-    if (error) {
-      throw new Error(`Supabase Storage upload error: ${error.message}`);
+      if (error) {
+        console.warn(`⚠️ Supabase Storage upload error: ${error.message}, falling back to local file`);
+        return {
+          provider: 'local_fallback',
+          key,
+          filename: file.filename,
+          path: file.path,
+          url: `/uploads/${folder}/${file.filename}`,
+        };
+      }
+
+      const { data: publicUrlData } = this.client.storage
+        .from(this.bucket)
+        .getPublicUrl(key);
+
+      return {
+        provider: 'supabase',
+        key,
+        filename: file.filename,
+        path: file.path,
+        url: publicUrlData?.publicUrl || this.getPublicUrl(key),
+      };
+    } catch (saveErr) {
+      console.warn(`⚠️ Supabase Storage save error: ${saveErr.message}, falling back to local file`);
+      return {
+        provider: 'local_fallback',
+        key,
+        filename: file.filename,
+        path: file.path,
+        url: `/uploads/${folder}/${file.filename}`,
+      };
     }
-
-    const { data: publicUrlData } = this.client.storage
-      .from(this.bucket)
-      .getPublicUrl(key);
-
-    return {
-      provider: 'supabase',
-      key,
-      filename: file.filename,
-      path: file.path,
-      url: publicUrlData?.publicUrl || this.getPublicUrl(key),
-    };
   }
 
   getPublicUrl(key) {

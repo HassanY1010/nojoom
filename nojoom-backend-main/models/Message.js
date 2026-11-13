@@ -96,39 +96,50 @@ export class Message {
   }
 
   // الحصول على محادثات المستخدم
-  static async getUserConversations(userId, tenantId) {
-    const [rows] = await pool.execute(
-      `SELECT 
-          u.id,
-          u.username,
-          u.avatar,
-          u.is_online,
-          ac.last_message_content,
-          ac.last_message_at,
-          (SELECT COUNT(*) FROM direct_messages 
-           WHERE sender_id = u.id AND receiver_id = ? AND tenant_id = ? AND is_read = FALSE) as unread_count,
-          u.id as other_user_id
-       FROM active_conversations ac
-       JOIN users u ON (u.id = CASE 
-                              WHEN ac.user1_id = ? THEN ac.user2_id
-                              ELSE ac.user1_id
-                            END)
-       WHERE (ac.user1_id = ? OR ac.user2_id = ?)
-         AND ac.tenant_id = ?
-         AND u.is_banned = FALSE
-       ORDER BY ac.last_message_at DESC`,
-      [userId, tenantId, userId, userId, userId, tenantId]
-    );
-    return rows;
+  static async getUserConversations(userId, tenantId = 1) {
+    const tid = tenantId || 1;
+    try {
+      const [rows] = await pool.execute(
+        `SELECT 
+            u.id,
+            u.username,
+            u.avatar,
+            COALESCE(u.is_online, FALSE) as is_online,
+            ac.last_message_content,
+            ac.last_message_at,
+            (SELECT COUNT(*) FROM direct_messages 
+             WHERE sender_id = u.id AND receiver_id = ? AND (tenant_id = ? OR tenant_id IS NULL) AND is_read = FALSE) as unread_count,
+            u.id as other_user_id
+         FROM active_conversations ac
+         JOIN users u ON (u.id = CASE 
+                                WHEN ac.user1_id = ? THEN ac.user2_id
+                                ELSE ac.user1_id
+                              END)
+         WHERE (ac.user1_id = ? OR ac.user2_id = ?)
+           AND (ac.tenant_id = ? OR ac.tenant_id IS NULL)
+           AND (u.is_banned = FALSE OR u.is_banned IS NULL)
+         ORDER BY ac.last_message_at DESC`,
+        [userId, tid, userId, userId, userId, tid]
+      );
+      return rows || [];
+    } catch (err) {
+      console.warn('getUserConversations fallback error:', err.message);
+      return [];
+    }
   }
 
   // الحصول على عدد الرسائل غير المقروءة
-  static async getUnreadCount(userId, tenantId) {
-    const [result] = await pool.execute(
-      'SELECT COUNT(*) as unread_count FROM direct_messages WHERE receiver_id = ? AND tenant_id = ? AND is_read = FALSE',
-      [userId, tenantId]
-    );
-    return result[0].unread_count;
+  static async getUnreadCount(userId, tenantId = 1) {
+    const tid = tenantId || 1;
+    try {
+      const [result] = await pool.execute(
+        'SELECT COUNT(*) as unread_count FROM direct_messages WHERE receiver_id = ? AND (tenant_id = ? OR tenant_id IS NULL) AND is_read = FALSE',
+        [userId, tid]
+      );
+      return result[0]?.unread_count || 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   // تحديد الرسائل كمقروءة

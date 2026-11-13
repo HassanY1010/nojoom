@@ -313,6 +313,7 @@ export const initializeDatabase = async () => {
     await addCol('users', 'points', 'DECIMAL(15,2) DEFAULT 0.00');
     await addCol('users', 'total_earnings', 'DECIMAL(15,2) DEFAULT 0.00');
     await addCol('users', 'country', "VARCHAR(50) DEFAULT 'Global'");
+    await addCol('users', 'is_online', 'BOOLEAN DEFAULT FALSE');
 
     // ✅ إنشاء جدول reset_codes لإعادة تعيين كلمة المرور
     await connection.execute(`
@@ -406,6 +407,7 @@ export const initializeDatabase = async () => {
     await addCol('videos', 'deleted_at', 'TIMESTAMP NULL');
     await addCol('videos', 'boost_score', 'INT DEFAULT 0');
     await addCol('videos', 'country', "VARCHAR(50) DEFAULT 'Global'");
+    await addCol('videos', 'category', "VARCHAR(50) DEFAULT 'general'");
     await addCol('videos', 'ai_title_suggestion', 'VARCHAR(255)');
     await addCol('videos', 'ai_moderation_score', 'DECIMAL(3,2) DEFAULT 0.00');
     await addCol('videos', 'ai_moderation_flags', 'JSON');
@@ -518,6 +520,27 @@ export const initializeDatabase = async () => {
         INDEX idx_following_id (following_id)
       )
     `);
+
+    // ✅ جدول المتابعات (followers) - متوافق مع كافة أجزاء النظام
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS followers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        follower_id INT NOT NULL,
+        following_id INT NOT NULL,
+        tenant_id INT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_follow (follower_id, following_id),
+        INDEX idx_follower_id (follower_id),
+        INDEX idx_following_id (following_id),
+        INDEX idx_tenant_id (tenant_id)
+      )
+    `);
+
+    try {
+      await connection.execute('INSERT IGNORE INTO followers (id, follower_id, following_id, created_at) SELECT id, follower_id, following_id, created_at FROM follows');
+    } catch (_) {}
 
     // ✅ جدول الإعجابات
     await connection.execute(`
@@ -1041,7 +1064,7 @@ export const initializeDatabase = async () => {
     const tablesToUpdate = [
       'users', 'reset_codes', 'email_verification_tokens', 'broadcasts',
       'broadcast_displays', 'videos', 'user_preferences', 'direct_messages',
-      'active_conversations', 'video_views', 'explore_views', 'follows',
+      'active_conversations', 'video_views', 'explore_views', 'follows', 'followers',
       'likes', 'comments', 'messages', 'message_displays', 'watch_history',
       'user_interactions', 'refresh_tokens', 'search_history', 'search_interactions',
       'eye_tracking', 'scroll_behavior', 'voice_interactions', 'ai_user_profiles',

@@ -257,24 +257,33 @@ export const videoController = {
         });
       }
 
+      const tenantId = req.tenantId || req.tenant?.id || 1;
       const userCountry = await UserRepository.getUserCountry(req.user.id) || 'Global';
 
       const video = await VideoService.uploadVideo(
-        { userId: req.user.id, tenantId: req.tenantId, userCountry },
-        { filename: req.file.filename, path: req.file.path },
+        { userId: req.user.id, tenantId, userCountry },
+        { 
+          filename: req.file.filename, 
+          path: req.file.path,
+          mimetype: req.file.mimetype 
+        },
         req.body
       );
 
       // ✅ Log Action for Audit
-      await auditService.logAction({
-        tenant_id: req.tenantId,
-        user_id: req.user.id,
-        action: req.body.replaceVideoId ? 'update_video' : 'upload_video',
-        resource_type: 'video',
-        resource_id: video.id,
-        details: { title: video.title, category: video.category },
-        ip_address: req.ip || req.connection.remoteAddress
-      });
+      try {
+        await auditService.logAction({
+          tenant_id: tenantId,
+          user_id: req.user.id,
+          action: req.body.replaceVideoId ? 'update_video' : 'upload_video',
+          resource_type: 'video',
+          resource_id: video?.id,
+          details: { title: video?.title, category: video?.category },
+          ip_address: req.ip || req.connection.remoteAddress
+        });
+      } catch (auditErr) {
+        console.warn('⚠️ auditService.logAction warning:', auditErr.message);
+      }
 
       // ✅ الفهرسة في Elasticsearch / OpenSearch للبحث السريع
       try {

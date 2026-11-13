@@ -245,19 +245,23 @@ export const authController = {
 
   async refreshToken(req, res) {
     try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) return res.status(400).json({ error: 'Refresh token is required' });
+      const refreshToken = req.body?.refreshToken 
+        || req.cookies?.refreshToken 
+        || req.headers['x-refresh-token'] 
+        || req.headers['refresh-token'];
+
+      if (!refreshToken) {
+        return res.status(401).json({ error: 'No refresh token provided' });
+      }
 
       const result = await AuthService.refreshAccessToken(refreshToken);
-
-      res.json(result);
-
+      return res.json(result);
     } catch (error) {
-      console.error('❌ Refresh token error:', error);
-      if (error.message === 'Invalid refresh token' || error.message === 'Refresh token expired') {
+      console.warn('⚠️ Refresh token warning:', error.message);
+      if (error.message === 'Invalid refresh token' || error.message === 'Refresh token expired' || error.message === 'User not found') {
         return res.status(401).json({ error: error.message });
       }
-      res.status(500).json({ error: 'Internal server error' });
+      return res.status(500).json({ error: 'Internal server error' });
     }
   },
 
@@ -327,60 +331,6 @@ export const authController = {
     }
   },
 
-  async refreshToken(req, res) {
-    try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) return res.status(401).json({ error: 'Refresh token required' });
-
-      // 1. التحقق من وجوده في قاعدة البيانات
-      const tokenData = await AuthRepository.getRefreshToken(refreshToken);
-
-      if (!tokenData) {
-        // فحص إذا كان التوكن قد استُبدل مؤخراً (Concurrency Handle)
-        // يمكننا التحقق من سجل التوكنات المستبدلة إذا كان لدينا جدول لها
-        return res.status(403).json({ error: 'Invalid refresh token' });
-      }
-
-      // 2. التحقق من التوقيع والصلاحية
-      try {
-        jwt.verify(refreshToken, jwtConfig.refreshSecret);
-      } catch (err) {
-        // حذف التوكن المنتهي فعلياً
-        await AuthRepository.deleteRefreshToken(refreshToken);
-        return res.status(403).json({ error: 'Refresh token expired or invalid' });
-      }
-
-      // 3. إنشاء توكنات جديدة (Reuse user_id and tenant_id from token data)
-      const userId = tokenData.user_id;
-      const tenantId = tokenData.tenant_id;
-      const newAccessToken = jwt.sign({ id: userId, tenantId }, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
-      const newRefreshToken = jwt.sign({ id: userId, tenantId }, jwtConfig.refreshSecret, { expiresIn: jwtConfig.refreshExpiresIn });
-
-      // 4. تحديث التوكن (Atomic Update) مع التعامل مع التزامن
-      const affectedRows = await AuthRepository.updateRefreshToken(refreshToken, newRefreshToken);
-
-      // إذا لم يتم تحديث أي صف، فهذا يعني أن هناك طلباً آخر قام بتحديث التوكن بالفعل (Race Condition)
-      if (affectedRows === 0) {
-        console.log('🔄 Concurrency detected in refreshToken, fetching latest token for user:', userId);
-        const latestToken = await AuthRepository.getLatestRefreshToken(userId);
-
-        if (latestToken) {
-          // نرسل التوكن الموجود حالياً في القاعدة بدلاً من الخطأ
-          return res.json({
-            accessToken: newAccessToken, // الأكسس توكن الجديد لا يهم استبداله لأنه صالح لفترة قصيرة
-            refreshToken: latestToken
-          });
-        }
-
-        return res.status(403).json({ error: 'Session expired' });
-      }
-
-      res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
-    } catch (error) {
-      console.error('❌ Refresh token error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  },
   async getProfile(req, res) {
     try {
       // Check if user exists in request
