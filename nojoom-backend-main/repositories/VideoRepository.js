@@ -148,7 +148,7 @@ export const VideoRepository = {
             [userId, videoId, watchTime || 0, completed || false]
         );
     },
-    async getPublicVideos({ userId, sortBy, limit, offset }) {
+    async getPublicVideos({ userId = 0, sortBy = 'latest', limit = 20, offset = 0 }) {
         let orderSQL = 'v.created_at DESC';
         switch (sortBy) {
             case 'views': orderSQL = 'v.views DESC'; break;
@@ -156,9 +156,13 @@ export const VideoRepository = {
             case 'oldest': orderSQL = 'v.created_at ASC'; break;
         }
 
+        const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
+        const safeOffset = Math.max(0, parseInt(offset) || 0);
+        const safeUserId = parseInt(userId) || 0;
+
         const sql = `
           SELECT 
-            v.id, v.user_id, v.description, v.path, v.video_url, v.thumbnail, v.views, v.created_at,
+            v.id, v.user_id, v.description, v.path, v.video_url, v.thumbnail, v.views, v.created_at, v.title,
             u.username, u.avatar,
             COUNT(DISTINCT l.user_id) AS likes,
             COUNT(DISTINCT c.id)      AS comment_count,
@@ -168,20 +172,36 @@ export const VideoRepository = {
           LEFT JOIN likes  l ON l.video_id = v.id
           LEFT JOIN comments c ON c.video_id = v.id AND c.deleted_by_admin = FALSE
           WHERE v.deleted_by_admin = FALSE
-          GROUP BY v.id, u.id, u.username, u.avatar
+          GROUP BY v.id, v.user_id, v.description, v.path, v.video_url, v.thumbnail, v.views, v.created_at, v.title, u.id, u.username, u.avatar
           ORDER BY ${orderSQL}
-          LIMIT ? OFFSET ?
+          LIMIT ${safeLimit} OFFSET ${safeOffset}
         `;
 
-        const [rows] = await pool.execute(sql, [userId, parseInt(limit), offset]);
-        return rows;
+        try {
+            const [rows] = await pool.query(sql, [safeUserId]);
+            return rows || [];
+        } catch (queryErr) {
+            console.warn('⚠️ getPublicVideos query failed, falling back to simple query:', queryErr.message);
+            const [fallbackRows] = await pool.query(
+                `SELECT v.*, u.username, u.avatar FROM videos v 
+                 JOIN users u ON u.id = v.user_id 
+                 WHERE v.deleted_by_admin = FALSE 
+                 ORDER BY v.id DESC 
+                 LIMIT ${safeLimit} OFFSET ${safeOffset}`
+            );
+            return fallbackRows || [];
+        }
     },
 
     async getPublicVideosCount() {
-        const [totalRes] = await pool.execute(
-            'SELECT COUNT(*) AS total FROM videos WHERE is_public = TRUE AND deleted_by_admin = FALSE'
-        );
-        return totalRes[0].total;
+        try {
+            const [totalRes] = await pool.query(
+                'SELECT COUNT(*) AS total FROM videos WHERE deleted_by_admin = FALSE'
+            );
+            return totalRes[0]?.total || 0;
+        } catch (_) {
+            return 0;
+        }
     }
 };
 

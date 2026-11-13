@@ -777,9 +777,10 @@ export const videoController = {
       } catch (repoErr) {
         console.warn('⚠️ getPublicVideos complex query failed, using safe fallback:', repoErr.message);
         try {
+          const safeLimit = Math.max(1, Math.min(100, parseInt(limit) || 20));
+          const safeOffset = Math.max(0, parseInt(offset) || 0);
           const [fallbackRows] = await pool.query(
-            'SELECT v.*, u.username, u.avatar FROM videos v LEFT JOIN users u ON u.id = v.user_id WHERE v.deleted_by_admin = FALSE ORDER BY v.id DESC LIMIT ? OFFSET ?',
-            [parseInt(limit), offset]
+            `SELECT v.*, u.username, u.avatar FROM videos v LEFT JOIN users u ON u.id = v.user_id WHERE v.deleted_by_admin = FALSE ORDER BY v.id DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`
           );
           rows = fallbackRows || [];
           const [totalRes] = await pool.query('SELECT COUNT(*) AS total FROM videos WHERE deleted_by_admin = FALSE');
