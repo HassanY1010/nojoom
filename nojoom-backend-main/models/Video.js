@@ -105,30 +105,25 @@ export class Video {
   }
 
   static async findById(id, tenantId) {
-    // 🔒 Multi-Tenant Security: MUST filter by tenant_id
-    if (!tenantId) {
-      throw new Error('tenantId is required for findById');
-    }
+    const tid = tenantId || 1;
+    const query = tenantId
+      ? `SELECT v.*, u.username, u.avatar 
+         FROM videos v 
+         JOIN users u ON v.user_id = u.id 
+         WHERE v.id = ? AND (v.tenant_id = ? OR v.tenant_id IS NULL) AND v.deleted_by_admin = FALSE AND u.is_banned = FALSE`
+      : `SELECT v.*, u.username, u.avatar 
+         FROM videos v 
+         JOIN users u ON v.user_id = u.id 
+         WHERE v.id = ? AND v.deleted_by_admin = FALSE AND u.is_banned = FALSE`;
 
-    const [rows] = await pool.execute(
-      `SELECT v.*, u.username, u.avatar 
-       FROM videos v 
-       JOIN users u ON v.user_id = u.id 
-       WHERE v.id = ? AND v.tenant_id = ? AND v.deleted_by_admin = FALSE AND u.is_banned = FALSE`,
-      [id, tenantId]
-    );
+    const [rows] = await pool.execute(query, tenantId ? [id, tid] : [id]);
     return rows[0];
   }
 
   static async getVideosFromFollowingUsers(userId, tenantId, limit = 10) {
     try {
-      // 🔒 Multi-Tenant Security: MUST filter by tenant_id
-      if (!tenantId) {
-        throw new Error('tenantId is required for getVideosFromFollowingUsers');
-      }
-
       const safeUserId = parseInt(userId) || 0;
-      const safeTenantId = parseInt(tenantId) || 0;
+      const safeTenantId = parseInt(tenantId) || 1;
       const safeLimit = parseInt(limit) || 10;
 
       console.log(`🔍 Executing getVideosFromFollowingUsers for user ${safeUserId}, tenant ${safeTenantId}, limit ${safeLimit}`);

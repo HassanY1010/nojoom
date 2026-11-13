@@ -167,35 +167,41 @@ export const videoController = {
     }
   },
 
-  // ✅ هيلبر موحد لمعالجة بيانات الفيديو (محلي فقط)
+  // ✅ هيلبر موحد لمعالجة بيانات الفيديو
   standardizeVideo(req, v) {
     if (!v) return v;
 
-    // 1. معالجة الفيديو (محلي فقط)
-    let videoFilename = v.path || (v.video_url ? path.basename(v.video_url) : '');
-
-    // إذا كان رابطاً كاملاً، نأخذ اسم الملف فقط
-    if (videoFilename && (videoFilename.startsWith('http') || videoFilename.includes('/'))) {
-      videoFilename = path.basename(videoFilename);
-    }
-
-    if (videoFilename) {
-      v.video_url = videoController.getFullUrl(req, `/uploads/videos/${videoFilename}`);
+    // 1. معالجة الفيديو (دعم السحابي والمحلي)
+    if (v.video_url && (v.video_url.startsWith('http://') || v.video_url.startsWith('https://')) && !v.video_url.includes('localhost:')) {
+      // رابط سحابي مباشر (Supabase / S3 / CDN)
     } else {
-      v.video_url = v.video_url || '/default-video.mp4';
-    }
-
-    // 2. معالجة الصورة المصغرة (محلي فقط)
-    let thumbFilename = v.thumbnail ? path.basename(v.thumbnail) : '';
-    if (thumbFilename) {
-      thumbFilename = path.basename(thumbFilename);
-      if (thumbFilename.includes('default')) {
-        v.thumbnail = videoController.getFullUrl(req, '/default-thumbnail.jpg');
-      } else {
-        v.thumbnail = videoController.getFullUrl(req, `/uploads/videos/thumbnails/${thumbFilename}`);
+      let videoFilename = v.path || (v.video_url ? path.basename(v.video_url) : '');
+      if (videoFilename && (videoFilename.startsWith('http') || videoFilename.includes('/'))) {
+        videoFilename = path.basename(videoFilename);
       }
+
+      if (videoFilename) {
+        v.video_url = videoController.getFullUrl(req, `/uploads/videos/${videoFilename}`);
+      } else {
+        v.video_url = v.video_url || '/default-video.mp4';
+      }
+    }
+
+    // 2. معالجة الصورة المصغرة (دعم السحابي والمحلي)
+    if (v.thumbnail && (v.thumbnail.startsWith('http://') || v.thumbnail.startsWith('https://')) && !v.thumbnail.includes('localhost:')) {
+      // رابط سحابي مباشر
     } else {
-      v.thumbnail = videoController.getFullUrl(req, '/default-thumbnail.jpg');
+      let thumbFilename = v.thumbnail ? path.basename(v.thumbnail) : '';
+      if (thumbFilename) {
+        thumbFilename = path.basename(thumbFilename);
+        if (thumbFilename.includes('default')) {
+          v.thumbnail = videoController.getFullUrl(req, '/default-thumbnail.jpg');
+        } else {
+          v.thumbnail = videoController.getFullUrl(req, `/uploads/videos/thumbnails/${thumbFilename}`);
+        }
+      } else {
+        v.thumbnail = videoController.getFullUrl(req, '/default-thumbnail.jpg');
+      }
     }
 
     // 3. معالجة الأفاتار
@@ -303,7 +309,7 @@ export const videoController = {
       if (err.name !== 'ValidationError') {
         await auditService.alertSuperAdmin(err, { user_id: req.user?.id, tenant_id: req.tenantId });
       }
-      return res.status(500).json({ error: 'Internal server error' });
+      return res.status(500).json({ error: 'Internal server error', details: err.message });
     }
   },
 

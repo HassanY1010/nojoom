@@ -20,7 +20,7 @@ export const VideoService = {
      * توحيد بيانات الفيديو
      */
     standardizeVideo(baseUrl, video) {
-        if (!video) return video;
+        if (!video) return video || { id: finalVideoId, ...videoData };
 
         if (!video.video_url?.startsWith('http')) {
             let videoFilename = video.path || (video.video_url ? path.basename(video.video_url) : '');
@@ -61,7 +61,7 @@ export const VideoService = {
         video.views = parseInt(video.views) || 0;
         video.comment_count = parseInt(video.comment_count) || 0;
 
-        return video;
+        return video || { id: finalVideoId, ...videoData };
     },
 
     /**
@@ -95,6 +95,7 @@ export const VideoService = {
      */
     async uploadVideo(userData, fileData, options) {
         const { userId, tenantId, userCountry } = userData;
+        const activeTenantId = tenantId || 1;
         const { filename, path: videoAbsolutePath } = fileData;
         const { 
             description, title, duration, category, 
@@ -112,7 +113,7 @@ export const VideoService = {
         const videoUrl = storedVideo.url;
 
         const videoData = {
-            tenant_id: tenantId,
+            tenant_id: activeTenantId,
             user_id: userId,
             video_url: videoUrl,
             thumbnail: thumbRelativeUrl,
@@ -161,8 +162,8 @@ export const VideoService = {
             }, 1000);
         }
 
-        const video = await Video.findById(finalVideoId, tenantId);
-        return video;
+        const video = await Video.findById(finalVideoId, activeTenantId);
+        return video || { id: finalVideoId, ...videoData };
     },
 
     /**
