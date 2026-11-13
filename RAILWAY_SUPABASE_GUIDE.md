@@ -70,8 +70,9 @@ DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}
 DB_NAME=${{MySQL.MYSQLDATABASE}}
 DB_PORT=${{MySQL.MYSQLPORT}}
 
-# الذاكرة المؤقتة والطوابير
-REDIS_URL=${{Redis.REDIS_URL}}
+# الذاكرة المؤقتة والطوابير (Upstash Cloud Redis أو Railway Redis)
+REDIS_URL=rediss://default:<YOUR_UPSTASH_REDIS_PASSWORD>@exact-prawn-94053.upstash.io:6379
+REDIS_TLS=true
 
 # الحماية والأمان (أدخل نصوص عشوائية قوية طويلة)
 JWT_SECRET=super_secret_jwt_key_at_least_32_characters_long_12345

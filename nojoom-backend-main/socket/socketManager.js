@@ -63,7 +63,11 @@ export const initSocket = async (server) => {
         const { createAdapter } = await import('@socket.io/redis-adapter');
         const { default: Redis } = await import('ioredis');
 
-        const pubClient = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+        let redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+        if (redisUrl.includes('upstash.io') && redisUrl.startsWith('redis://')) {
+          redisUrl = redisUrl.replace(/^redis:\/\//, 'rediss://');
+        }
+        const pubClient = new Redis(redisUrl);
         const subClient = pubClient.duplicate();
 
         io.adapter(createAdapter(pubClient, subClient));
