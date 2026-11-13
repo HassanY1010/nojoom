@@ -2,6 +2,7 @@ FROM node:20-bookworm-slim AS base
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=3333
 
 # Install system dependencies (tini for PID 1 process management, ffmpeg for video processing)
 RUN apt-get update && apt-get install -y --no-install-recommends \

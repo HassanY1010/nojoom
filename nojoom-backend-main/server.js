@@ -172,6 +172,19 @@ const authLimiter = rateLimit({
 // ======================================================
 // 3. Rate Limiting & System Settings
 // ======================================================
+// ======================================================
+// 3.5 Instant Healthcheck (for Railway / Kubernetes / Docker)
+// Must respond immediately before any DB/tenant/maintenance middleware
+// ======================================================
+app.get(['/api/health', '/health'], (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    message: 'Nojoom Server is running optimally',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 import { checkMaintenanceMode } from './middleware/settingsMiddleware.js';
 
 app.use(checkMaintenanceMode);
@@ -266,8 +279,12 @@ const startServer = async () => {
   if (isStarting) return;
   isStarting = true;
 
-  if (cluster.isPrimary && process.env.NODE_ENV === 'production') {
-    const numCPUs = os.cpus().length;
+  // In containerized production (Railway / Docker with 1GB memory limit),
+  // running cluster with os.cpus().length spawns 16-32 workers which causes OOM (Out Of Memory).
+  // Only enable clustering when explicitly requested via ENABLE_CLUSTER=true.
+  const enableCluster = process.env.ENABLE_CLUSTER === 'true';
+  if (enableCluster && cluster.isPrimary) {
+    const numCPUs = Math.min(os.cpus().length, parseInt(process.env.WEB_CONCURRENCY, 10) || 2);
     console.log(`🚀 Primary ${process.pid} is running. Spawning ${numCPUs} workers...`);
 
     for (let i = 0; i < numCPUs; i++) {
@@ -305,7 +322,7 @@ const startServer = async () => {
         }
       }
 
-      const PORT = process.env.PORT || 5000;
+      const PORT = process.env.PORT || 3333;
       const HOST = process.env.HOST || '0.0.0.0';
 
       // Error handling for server startup

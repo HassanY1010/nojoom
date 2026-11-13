@@ -5,7 +5,12 @@ import { pool } from '../config/db.js';
  */
 export const resolveTenant = async (req, res, next) => {
     try {
-        const host = req.get('host');
+        // Skip tenant resolution for health checks and metrics
+        if (req.path === '/api/health' || req.path === '/health' || req.path === '/metrics' || req.path === '/api/metrics') {
+            return next();
+        }
+
+        const host = req.get('host') || '';
 
         // Extract subdomain or domain
         let subdomain = null;
@@ -14,8 +19,15 @@ export const resolveTenant = async (req, res, next) => {
         // Check if it's a custom domain or subdomain
         const parts = host.split('.');
 
-        if (parts.length === 1 || host.includes('localhost')) {
-            // Local development - use default tenant or query param
+        if (
+            parts.length === 1 ||
+            host.includes('localhost') ||
+            host.includes('127.0.0.1') ||
+            host.includes('railway.app') ||
+            host.includes('up.railway.app') ||
+            host.includes('nojoom-production')
+        ) {
+            // Local development or Railway production default domain
             subdomain = req.query.tenant || 'default';
         } else if (parts.length === 2) {
             // Custom domain (e.g., example.com)
@@ -40,6 +52,16 @@ export const resolveTenant = async (req, res, next) => {
         const [tenants] = await pool.query(query, params);
 
         if (!tenants || tenants.length === 0) {
+            // Fallback to default tenant if available
+            try {
+                const [defaultTenants] = await pool.query('SELECT * FROM tenants WHERE subdomain = "default" AND is_active = 1 LIMIT 1');
+                if (defaultTenants && defaultTenants.length > 0) {
+                    req.tenant = defaultTenants[0];
+                    req.tenantId = defaultTenants[0].id;
+                    return next();
+                }
+            } catch (_) {}
+
             return res.status(404).json({
                 error: 'Tenant not found or inactive',
                 message: 'The requested tenant does not exist or has been deactivated.'
