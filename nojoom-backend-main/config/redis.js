@@ -18,10 +18,10 @@ const isTls = Boolean(
     process.env.REDIS_TLS === 'true'
 );
 
-let REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
-let REDIS_PORT = parseInt(process.env.REDIS_PORT) || 6379;
-let REDIS_PASSWORD = process.env.REDIS_PASSWORD || undefined;
-let REDIS_USERNAME = process.env.REDIS_USER || process.env.REDIS_USERNAME || undefined;
+let REDIS_HOST = process.env.REDIS_HOST || process.env.REDISHOST || '127.0.0.1';
+let REDIS_PORT = parseInt(process.env.REDIS_PORT || process.env.REDISPORT) || 6379;
+let REDIS_PASSWORD = process.env.REDIS_PASSWORD || process.env.REDISPASSWORD || undefined;
+let REDIS_USERNAME = process.env.REDIS_USER || process.env.REDISUSER || process.env.REDIS_USERNAME || undefined;
 
 if (REDIS_URL) {
     try {
