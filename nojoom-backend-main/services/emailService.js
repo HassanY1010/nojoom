@@ -19,7 +19,8 @@ class EmailService {
   }
 
   async sendVerificationEmail(user, verificationToken) {
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : 'https://unique-alignment-production-4b0d305b.up.railway.app');
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
     const mailOptions = {
       from: `"${process.env.APP_NAME || 'Nojoom App'}" <${process.env.EMAIL_USER}>`,
@@ -74,7 +75,8 @@ class EmailService {
   }
 
   async sendPasswordResetEmail(user, resetToken) {
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : 'https://unique-alignment-production-4b0d305b.up.railway.app');
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     const mailOptions = {
       from: `"${process.env.APP_NAME || 'Nojoom App'}" <${process.env.EMAIL_USER}>`,
@@ -132,7 +134,8 @@ class EmailService {
   async sendActivityNotificationEmail(recipient, notification) {
     const subject = `Nojoom - New ${notification.type}`;
     let actionText = '';
-    let actionUrl = `${process.env.FRONTEND_URL || 'http://localhost:8080'}`;
+    const frontendUrl = process.env.FRONTEND_URL || (process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',')[0].trim() : 'https://unique-alignment-production-4b0d305b.up.railway.app');
+    let actionUrl = `${frontendUrl}`;
 
     switch (notification.type) {
       case 'follow':

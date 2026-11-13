@@ -185,9 +185,16 @@ app.use(resolveTenant); // Resolve tenant from subdomain/domain
 // ======================================================
 app.use('/api/videos/upload', (req, res, next) => {
   const origin = req.headers.origin;
-  const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',') : [];
+  const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(u => u.trim()) : [];
 
-  if (allowedOrigins.includes(origin) || (process.env.NODE_ENV === 'development' && origin && (origin.includes('localhost') || origin.includes('192.168.')))) {
+  if (
+    allowedOrigins.includes(origin) ||
+    origin?.includes('unique-alignment-production-4b0d305b.up.railway.app') ||
+    origin?.includes('nojoom-production.up.railway.app') ||
+    origin?.endsWith('.railway.app') ||
+    origin?.endsWith('.up.railway.app') ||
+    (process.env.NODE_ENV === 'development' && origin && (origin.includes('localhost') || origin.includes('192.168.')))
+  ) {
     res.header('Access-Control-Allow-Origin', origin);
   }
 
