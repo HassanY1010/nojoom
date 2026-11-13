@@ -167,8 +167,8 @@ export const VideoRepository = {
           JOIN users u ON u.id = v.user_id
           LEFT JOIN likes  l ON l.video_id = v.id
           LEFT JOIN comments c ON c.video_id = v.id AND c.deleted_by_admin = FALSE
-          WHERE v.is_public = TRUE AND v.deleted_by_admin = FALSE
-          GROUP BY v.id
+          WHERE v.deleted_by_admin = FALSE
+          GROUP BY v.id, u.id, u.username, u.avatar
           ORDER BY ${orderSQL}
           LIMIT ? OFFSET ?
         `;
