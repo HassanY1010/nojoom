@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -117,7 +118,15 @@ class SupabaseStorageProvider extends StorageProvider {
     }
 
     this.bucket = process.env.SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_BUCKET || 'nojoom-media';
-    this.client = createClient(url, key);
+    this.client = createClient(url, key, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      realtime: {
+        transport: ws,
+      },
+    });
     this.publicBaseUrl = process.env.SUPABASE_PUBLIC_URL || `${url.replace(/\/$/, '')}/storage/v1/object/public/${this.bucket}`;
   }
 
