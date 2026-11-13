@@ -20,7 +20,7 @@ export const VideoService = {
      * توحيد بيانات الفيديو
      */
     standardizeVideo(baseUrl, video) {
-        if (!video) return video || { id: finalVideoId, ...videoData };
+        if (!video) return video;
 
         if (!video.video_url?.startsWith('http')) {
             let videoFilename = video.path || (video.video_url ? path.basename(video.video_url) : '');
@@ -61,7 +61,7 @@ export const VideoService = {
         video.views = parseInt(video.views) || 0;
         video.comment_count = parseInt(video.comment_count) || 0;
 
-        return video || { id: finalVideoId, ...videoData };
+        return video;
     },
 
     /**
