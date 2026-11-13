@@ -6,8 +6,8 @@ dotenv.config();
 
 const DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST;
 const DB_USER = process.env.DB_USER || process.env.MYSQLUSER;
-const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD;
-const DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE;
+const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD;
+const DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE;
 const DB_PORT = process.env.DB_PORT || process.env.MYSQLPORT || 3306;
 
 if (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME) {
