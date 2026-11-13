@@ -20,7 +20,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       socket.disconnect();
     }
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3333';
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD ? 'https://nojoom-production.up.railway.app' : 'http://localhost:3333');
     console.log('🔌 Connecting to socket at:', socketUrl);
 
     const newSocket = io(socketUrl, {

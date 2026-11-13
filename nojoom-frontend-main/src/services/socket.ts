@@ -19,7 +19,7 @@ class SocketService {
       }
 
       // ✅ استخدام VITE_SOCKET_URL مع التأكد من HTTPS
-      const socketUrl = import.meta.env.VITE_SOCKET_URL;
+      const socketUrl = import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD ? 'https://nojoom-production.up.railway.app' : 'http://localhost:3333');
 
       if (!socketUrl) {
         console.error('❌ VITE_SOCKET_URL is not defined');

@@ -98,6 +98,9 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     const isAllowed = allowedOrigins.indexOf(origin) !== -1 ||
+      origin.includes('nojoom-production.up.railway.app') ||
+      origin.endsWith('.railway.app') ||
+      origin.endsWith('.up.railway.app') ||
       (!isProduction && (origin.endsWith('.vercel.app') || origin.includes('localhost') || origin.includes('192.168.')));
 
     if (isAllowed) {

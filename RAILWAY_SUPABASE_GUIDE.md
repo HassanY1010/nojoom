@@ -113,8 +113,8 @@ S3_FORCE_PATH_STYLE=true
 4. توجه إلى تبويب المتغيرات (**Variables**) وأضف المتغيرات الخاصة بالبناء:
 
 ```env
-VITE_API_URL=https://<BACKEND-DOMAIN>.up.railway.app/api
-VITE_SOCKET_URL=https://<BACKEND-DOMAIN>.up.railway.app
+VITE_API_URL=https://nojoom-production.up.railway.app/api
+VITE_SOCKET_URL=https://nojoom-production.up.railway.app
 VITE_SUPABASE_PROJECT_ID=yootsrzrcjhzwdygwidp
 VITE_SUPABASE_URL=https://yootsrzrcjhzwdygwidp.supabase.co
 VITE_SUPABASE_ANON_KEY=sb_publishable_q8V-PGOSXkXaZkVbiEsZJA_x0ilbkcA
