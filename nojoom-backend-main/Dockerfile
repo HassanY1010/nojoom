@@ -33,7 +33,7 @@ COPY . .
 
 RUN mkdir -p uploads/videos uploads/videos/thumbnails uploads/avatars uploads/audio uploads/stories uploads/groups temp logs public
 
-EXPOSE 3333
+EXPOSE 3333 8080 3000
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "server.js"]

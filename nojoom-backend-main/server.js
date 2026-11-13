@@ -83,6 +83,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.set('trust proxy', 1); // Required for Render / Vercel proxies
 
+// ======================================================
+// 1.5 Universal CORS & Preflight Handler (FIRST)
+// ======================================================
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, Refresh-Token, Accept, Cookie');
+    res.setHeader('Access-Control-Max-Age', '86400');
+  }
+
+  // Fast-track OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  next();
+});
+
 // ✅ Sentry request handler MUST be the first middleware on the app
 app.use(monitoringService.getSentryHandlers().requestHandler);
 
@@ -342,6 +363,18 @@ const startServer = async () => {
         console.log(`📍 Port: ${PORT}`);
         console.log(`🌐 Host: ${HOST}`);
       });
+
+      // Listen on common Railway routing ports to prevent 502 port mismatches
+      const auxPorts = [8080, 3000, 80].filter(p => p !== parseInt(PORT, 10));
+      for (const p of auxPorts) {
+        try {
+          const auxServer = createServer(app);
+          auxServer.on('error', () => {});
+          auxServer.listen(p, HOST, () => {
+            console.log(`🌐 Auxiliary listener active on port ${p}`);
+          });
+        } catch (_) {}
+      }
 
 
       // ✅ تهيئة Socket.IO مرة واحدة فقط
