@@ -3,6 +3,10 @@ FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3333
+ENV STORAGE_PROVIDER=supabase
+ENV SUPABASE_PROJECT_ID=yootsrzrcjhzwdygwidp
+ENV SUPABASE_URL=https://yootsrzrcjhzwdygwidp.supabase.co
+ENV SUPABASE_STORAGE_BUCKET=nojoom-media
 
 # Install system dependencies (tini for PID 1 process management, ffmpeg for video processing)
 RUN apt-get update && apt-get install -y --no-install-recommends \

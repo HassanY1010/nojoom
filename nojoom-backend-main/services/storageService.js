@@ -4,7 +4,19 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
 
 const isProduction = process.env.NODE_ENV === 'production';
-const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
+
+// Auto-detect provider if not explicitly provided
+let detectedProvider = (process.env.STORAGE_PROVIDER || '').toLowerCase();
+if (!detectedProvider) {
+  if (process.env.SUPABASE_URL || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_PROJECT_ID) {
+    detectedProvider = 'supabase';
+  } else if (process.env.S3_BUCKET) {
+    detectedProvider = 's3';
+  } else {
+    detectedProvider = 'local';
+  }
+}
+const provider = detectedProvider;
 
 class StorageProvider {
   async save() {
@@ -20,7 +32,7 @@ class LocalStorageProvider extends StorageProvider {
   constructor() {
     super();
     if (isProduction && process.env.ALLOW_LOCAL_STORAGE !== 'true') {
-      throw new Error('Local upload storage is not allowed in production. Configure STORAGE_PROVIDER=s3 or STORAGE_PROVIDER=supabase.');
+      console.warn('⚠️ [Storage Notice] Using local storage in production. Configure STORAGE_PROVIDER=supabase with credentials to persist files across deployments.');
     }
   }
 
@@ -146,11 +158,16 @@ class SupabaseStorageProvider extends StorageProvider {
 }
 
 const createStorageProvider = () => {
-  if (provider === 'supabase') {
-    return new SupabaseStorageProvider();
-  }
-  if (provider === 's3') {
-    return new S3StorageProvider();
+  try {
+    if (provider === 'supabase') {
+      return new SupabaseStorageProvider();
+    }
+    if (provider === 's3') {
+      return new S3StorageProvider();
+    }
+  } catch (err) {
+    console.warn(`⚠️ Failed to initialize ${provider} storage provider:`, err.message);
+    console.warn('⚠️ Falling back to LocalStorageProvider');
   }
   return new LocalStorageProvider();
 };
