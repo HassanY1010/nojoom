@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let rawRedisUrl = process.env.REDIS_URL;
+let rawRedisUrl = process.env.REDIS_URL || 'redis://default:kkbuyHCwOCOvZOXuZWJxqfsJeQijnnJO@redis.railway.internal:6379';
 
 // Ensure TLS for Upstash or rediss
 if (rawRedisUrl && rawRedisUrl.includes('upstash.io') && rawRedisUrl.startsWith('redis://')) {

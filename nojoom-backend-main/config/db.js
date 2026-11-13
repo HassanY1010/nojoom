@@ -4,16 +4,33 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST;
-const DB_USER = process.env.DB_USER || process.env.MYSQLUSER;
-const DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD;
-const DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE;
-const DB_PORT = process.env.DB_PORT || process.env.MYSQLPORT || 3306;
+let DB_HOST = process.env.DB_HOST || process.env.MYSQLHOST;
+let DB_USER = process.env.DB_USER || process.env.MYSQLUSER;
+let DB_PASSWORD = process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_ROOT_PASSWORD;
+let DB_NAME = process.env.DB_NAME || process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE;
+let DB_PORT = process.env.DB_PORT || process.env.MYSQLPORT || 3306;
 
-if (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME) {
-  console.error("❌ Missing required database environment variables (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME or Railway MYSQL* vars)");
-  process.exit(1);
+// Parse connection URL if provided
+const dbUrl = process.env.MYSQL_URL || process.env.DATABASE_URL;
+if (dbUrl && (!DB_HOST || !DB_USER || !DB_PASSWORD || !DB_NAME)) {
+  try {
+    const parsed = new URL(dbUrl);
+    DB_HOST = DB_HOST || parsed.hostname;
+    DB_PORT = DB_PORT || parseInt(parsed.port, 10) || 3306;
+    DB_USER = DB_USER || decodeURIComponent(parsed.username || 'root');
+    DB_PASSWORD = DB_PASSWORD || decodeURIComponent(parsed.password || '');
+    DB_NAME = DB_NAME || (parsed.pathname ? parsed.pathname.replace(/^\//, '') : 'railway');
+  } catch (err) {
+    console.warn('⚠️ Could not parse dbUrl:', err.message);
+  }
 }
+
+// Fallback to Railway internal MySQL credentials
+DB_HOST = DB_HOST || 'mysql.railway.internal';
+DB_USER = DB_USER || 'root';
+DB_PASSWORD = DB_PASSWORD || 'ugCzznxhQaByCnGxXxlZUoStYSDUtXlt';
+DB_NAME = DB_NAME || 'railway';
+DB_PORT = DB_PORT || 3306;
 
 const dbConfig = {
   host: DB_HOST,
